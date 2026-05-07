@@ -1,0 +1,62 @@
+name: Fetch Lok Sabha Bills
+
+on:
+  schedule:
+    # Daily at 2:30 AM UTC (8 AM IST) — after Lok Sabha morning session
+    - cron: '30 2 * * *'
+  workflow_dispatch: # allow manual trigger from GitHub Actions tab
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch bills from Lok Sabha API
+        run: |
+          curl -sf \
+            -H "Accept: application/json" \
+            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
+            "https://loksabhaapp.sansad.in/ws/bills?HouseType=L&PageNo=1&PageSize=100" \
+            -o data/bills_raw.json || echo '{"BillList":[]}' > data/bills_raw.json
+
+          curl -sf \
+            -H "Accept: application/json" \
+            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
+            "https://loksabhaapp.sansad.in/ws/bills?HouseType=R&PageNo=1&PageSize=100" \
+            -o data/bills_rs_raw.json || echo '{"BillList":[]}' > data/bills_rs_raw.json
+
+      - name: Merge and normalise bills
+        run: |
+          node - <<'EOF'
+          const fs = require('fs');
+          const ls = JSON.parse(fs.readFileSync('data/bills_raw.json', 'utf8'));
+          const rs = JSON.parse(fs.readFileSync('data/bills_rs_raw.json', 'utf8'));
+          const all = [...(ls.BillList ?? []), ...(rs.BillList ?? [])];
+          const out = {
+            updatedAt: new Date().toISOString(),
+            count: all.length,
+            bills: all,
+          };
+          fs.writeFileSync('data/bills.json', JSON.stringify(out, null, 2));
+          console.log(`Wrote ${all.length} bills to data/bills.json`);
+          EOF
+
+      - name: Fetch Lok Sabha members
+        run: |
+          curl -sf \
+            -H "Accept: application/json" \
+            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
+            "https://loksabhaapp.sansad.in/ws/members?HouseType=L&PageNo=1&PageSize=600" \
+            -o data/members.json || echo '{"Members":[]}' > data/members.json
+
+      - name: Commit updated data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/bills.json data/members.json
+          git diff --cached --quiet || git commit -m "chore: update Lok Sabha bills and members data [skip ci]"
+          git push

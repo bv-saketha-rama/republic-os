@@ -2,7 +2,8 @@ import { action } from '../_generated/server';
 import { api } from '../_generated/api';
 
 // GitHub raw URL — updated daily by the fetch-bills.yml GitHub Action.
-// Set GITHUB_REPO in Convex env vars: "owner/repo-name"  e.g. "sakethram9999/republicos"
+// Set GITHUB_REPO in Convex dashboard env vars: e.g. "bv-saketha-rama/republic-os"
+declare const process: { env: Record<string, string | undefined> };
 const GITHUB_REPO = process.env.GITHUB_REPO ?? '';
 const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/data`;
 

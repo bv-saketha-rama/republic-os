@@ -6,6 +6,7 @@ import { RepoHeader } from '@/components/panels/RepoHeader';
 import { ChangelogView } from '@/components/panels/ChangelogView';
 import { IssuesView } from '@/components/panels/IssuesView';
 import { PRsView } from '@/components/panels/PRsView';
+import { NewsView } from '@/components/panels/NewsView';
 import { ReleasesView } from '@/components/panels/ReleasesView';
 import { CodeTreeView } from '@/components/panels/CodeTreeView';
 import { WikiView } from '@/components/panels/WikiView';
@@ -14,29 +15,28 @@ import { InsightsView } from '@/components/panels/InsightsView';
 import { PRDetail } from '@/components/details/PRDetail';
 import { IssueDetail } from '@/components/details/IssueDetail';
 import { ContributorProfile } from '@/components/details/ContributorProfile';
-import { useStates, useStateById } from '@/hooks/useConvex';
+import { useStates, useStateById, useArticles, useNationalStats } from '@/hooks/useConvex';
 import { C } from '@/lib/constants';
 import type { PanelTab, AppView } from '@/types';
-
 const INDIA_STATE = {
   id: 'IN',
   name: 'India',
-  maintainer: 'narendra-modi',
-  party: 'BJP',
-  mandateExpires: 'Jun 2029',
-  open: 1247,
-  prs: 47,
-  acts: 12480,
-  lastMerged: '3h ago',
-  lastTitle: 'Income Tax Amendment Bill 2025',
+  maintainer: '',
+  party: '',
+  mandateExpires: '',
+  open: 0,
+  prs: 0,
+  acts: 0,
+  lastMerged: '—',
+  lastTitle: '',
   health: 'amber' as const,
-  resolveRate: 0.65,
+  resolveRate: 0,
 };
 
 export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [activeTab, setActiveTab] = useState<PanelTab>('changelog');
+  const [activeTab, setActiveTab] = useState<PanelTab>('news');
   const [view, setView] = useState<AppView>({ kind: 'repo' });
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
@@ -48,18 +48,21 @@ export function App() {
 
   const { data: statesData } = useStates();
   const { data: stateData } = useStateById(selected !== 'IN' ? selected : null);
+  const articleStateId = selected === 'IN' ? undefined : selected;
+  const { data: articles } = useArticles(articleStateId);
+  const { data: nationalStats } = useNationalStats();
 
   const stateObj = selected === 'IN' ? INDIA_STATE : stateData;
 
   const selectState = (id: string) => {
     setSelected(id);
-    setActiveTab('changelog');
+    setActiveTab('news');
     setView({ kind: 'repo' });
   };
 
   const selectNational = () => {
     setSelected('IN');
-    setActiveTab('prs');
+    setActiveTab('news');
     setView({ kind: 'repo' });
   };
 
@@ -164,11 +167,18 @@ export function App() {
               <>
                 <RepoHeader
                   state={stateObj}
+                  isNational={selected === 'IN'}
+                  openCount={selected === 'IN' ? nationalStats?.openIssues : undefined}
+                  prCount={selected === 'IN' ? nationalStats?.openBills : undefined}
+                  articleCount={articles.length}
                   onClose={() => setSelected(null)}
                   onTab={(tab) => setActiveTab(tab as PanelTab)}
                   activeTab={activeTab}
                   onUserClick={goToUser}
                 />
+                {activeTab === 'news' && (
+                  <NewsView stateId={selected === 'IN' ? undefined : selected} />
+                )}
                 {activeTab === 'changelog' && (
                   <ChangelogView
                     stateId={selected === 'IN' ? undefined : selected}

@@ -88,6 +88,23 @@ export function useNationalStats() {
   const data = useQuery(api.stats.getNationalStats);
   return { data: data ?? null, isLoading: data === undefined };
 }
+export function useArticles(stateId?: string | null, sourceKind?: 'official' | 'primary' | 'reported', relationKey?: string) {
+  const args: {
+    stateId?: string;
+    sourceKind?: 'official' | 'primary' | 'reported';
+    relationKey?: string;
+  } = {};
+  if (stateId) args.stateId = stateId;
+  if (sourceKind) args.sourceKind = sourceKind;
+  if (relationKey) args.relationKey = relationKey;
+  const data = useQuery(api.articles.getArticles, args);
+  return { data: data ?? [], isLoading: data === undefined };
+}
+
+export function useArticlesByRelation(relationKey: string | null) {
+  const data = useQuery(api.articles.getArticlesByRelation, relationKey ? { relationKey } : 'skip');
+  return { data: data ?? [], isLoading: data === undefined };
+}
 
 export function useSearch(q: string) {
   const data = useQuery(api.search.searchAll, q.trim() ? { q } : 'skip');

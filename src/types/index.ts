@@ -24,7 +24,35 @@ export interface PR {
   stage: string;
   conversations: number;
   gazette: string | null;
+  ministry?: string;
+  committeeReport?: string;
+  gazetteUrl?: string;
+  voteAyeLS?: number;
+  voteNoLS?: number;
+  voteAbstainLS?: number;
+  voteAyeRS?: number;
+  voteNoRS?: number;
+  voteAbstainRS?: number;
+  introducedDate?: string;
+  passedDate?: string;
+  assentDate?: string;
+  summary?: string;
+  sourceUrl?: string;
 }
+
+export interface Article {
+  id: string;
+  url: string;
+  title: string;
+  outlet: string;
+  sourceKind: 'official' | 'primary' | 'reported';
+  publishedAt?: string;
+  fetchedAt: string;
+  excerpt?: string;
+  stateId?: string;
+  relationKey?: string;
+}
+
 
 export interface Issue {
   id: number;
@@ -38,6 +66,10 @@ export interface Issue {
   stale: boolean;
   comments: number;
   lastActivity: string;
+  source?: string;
+  ministryRef?: string;
+  description?: string;
+  sourceUrl?: string;
 }
 
 export interface Release {
@@ -52,6 +84,8 @@ export interface Release {
   yankReason?: string;
   ordinance: boolean;
   expiresIn?: string;
+  gazetteUrl?: string;
+  pdfUrl?: string;
 }
 
 export interface Contributor {
@@ -77,7 +111,6 @@ export interface ChangelogEntry {
   session: string;
   range: string;
   sections: Record<string, Array<{
-    text: string;
     ref?: string;
     kind?: 'pr' | 'issue';
     refLabel?: string;
@@ -90,7 +123,7 @@ export interface HoveredState {
   y: number;
 }
 
-export type PanelTab = 'code' | 'issues' | 'prs' | 'releases' | 'changelog' | 'wiki' | 'discussions' | 'insights';
+export type PanelTab = 'code' | 'issues' | 'prs' | 'releases' | 'changelog' | 'news' | 'wiki' | 'discussions' | 'insights';
 
 export type ViewKind = 'repo' | 'pr' | 'issue' | 'profile';
 

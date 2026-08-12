@@ -122,6 +122,17 @@ export function PRsView({ stateId, onPRClick, onUserClick }: PRsViewProps) {
                 <span> · {pr.age}</span>
                 <span> · {pr.stage}</span>
                 <span> · {pr.conversations} conversations</span>
+                {pr.sourceUrl && (
+                  <a
+                    href={pr.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-2 text-gh-accent hover:underline"
+                  >
+                    source ↗
+                  </a>
+                )}
               </div>
             </div>
           </div>

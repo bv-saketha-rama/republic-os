@@ -50,10 +50,20 @@ export function ChoroplethMap({ data, onSelect, selected, hovered, setHovered }:
             opacity={s ? (isHovered || isSelected ? 1 : 0.92) : 0.4}
             className="transition-colors duration-150"
             style={{ cursor: s ? 'pointer' : 'default' }}
+            tabIndex={s ? 0 : -1}
+            role={s ? 'button' : undefined}
+            aria-label={s ? `${s.name}, ${s.health}` : undefined}
+            aria-pressed={s ? isSelected : undefined}
             onMouseEnter={(e) => s && setHovered({ id, x: e.clientX, y: e.clientY })}
             onMouseMove={(e) => s && setHovered({ id, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHovered(null)}
             onClick={() => s && onSelect(id)}
+            onKeyDown={(e) => {
+              if (s && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                onSelect(id);
+              }
+            }}
           />
         );
       })}

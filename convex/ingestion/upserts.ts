@@ -95,3 +95,39 @@ export const upsertChangelog = mutation({
     }
   },
 });
+export const upsertArticle = mutation({
+  args: {
+    id: v.optional(v.string()),
+    url: v.string(),
+    title: v.string(),
+    outlet: v.string(),
+    sourceKind: v.union(v.literal('official'), v.literal('primary'), v.literal('reported')),
+    publishedAt: v.optional(v.string()),
+    fetchedAt: v.string(),
+    excerpt: v.optional(v.string()),
+    stateId: v.optional(v.string()),
+    relationKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.url.startsWith('https://')) throw new Error('Article URL must use HTTPS');
+    const existing = await ctx.db.query('articles').withIndex('by_url', (q) => q.eq('url', args.url)).first();
+    const fields = {
+      url: args.url,
+      title: args.title,
+      outlet: args.outlet,
+      sourceKind: args.sourceKind,
+      publishedAt: args.publishedAt,
+      fetchedAt: args.fetchedAt,
+      excerpt: args.excerpt,
+      stateId: args.stateId,
+      relationKey: args.relationKey,
+    };
+    if (existing) {
+      await ctx.db.patch(existing._id, fields);
+      return existing.id;
+    }
+    const id = args.id ?? `article:${args.url}`;
+    await ctx.db.insert('articles', { id, ...fields });
+    return id;
+  },
+});

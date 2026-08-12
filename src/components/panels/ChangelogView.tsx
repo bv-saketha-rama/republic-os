@@ -84,22 +84,21 @@ export function ChangelogView({ stateId, onIssueClick, onPRClick }: ChangelogVie
                         {ref && (
                           <>
                             <span className="text-gh-muted"> — </span>
-                            <Hash
-                              onClick={() =>
-                                it.kind === 'issue'
-                                  ? onIssueClick(parseInt(ref))
-                                  : onPRClick(
-                                      ref.startsWith('PR-')
-                                        ? ref
-                                        : ref.replace(/[^\w-]/g, '')
-                                    )
-                              }
-                            >
-                              {it.refLabel ||
-                                (it.kind === 'issue'
-                                  ? `closes issue #${ref}`
-                                  : `merged #${ref}`)}
-                            </Hash>
+                            {ref.startsWith('https://') ? (
+                              <a href={ref} target="_blank" rel="noopener noreferrer" className="font-mono text-[11px] text-gh-accent hover:underline">
+                                Read source ↗
+                              </a>
+                            ) : it.kind === 'issue' ? (
+                              <Hash onClick={() => onIssueClick(parseInt(ref))}>
+                                {it.refLabel || `closes issue #${ref}`}
+                              </Hash>
+                            ) : it.kind === 'pr' ? (
+                              <Hash onClick={() => onPRClick(ref.startsWith('PR-') ? ref : ref.replace(/[^\w-]/g, ''))}>
+                                {it.refLabel || `merged #${ref}`}
+                              </Hash>
+                            ) : (
+                              <span className="font-mono text-[11px] text-gh-muted">{it.refLabel || ref}</span>
+                            )}
                           </>
                         )}
                       </li>

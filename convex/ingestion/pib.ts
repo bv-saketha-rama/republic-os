@@ -20,59 +20,103 @@ interface RSSItem {
   description?: string;
 }
 
+function decodeText(value: string): string {
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#(x[\da-f]+|\d+);/gi, (_, code: string) => {
+      const base = code[0].toLowerCase() === 'x' ? 16 : 10;
+      const parsed = Number.parseInt(base === 16 ? code.slice(1) : code, base);
+      return Number.isNaN(parsed) ? '' : String.fromCodePoint(parsed);
+    })
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;|&#39;/gi, "'")
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function field(block: string, name: string): string {
+  const match = block.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, 'i'));
+  return match ? decodeText(match[1]) : '';
+}
+
 function parseRSSItems(xml: string): RSSItem[] {
   const items: RSSItem[] = [];
-  const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g);
-  for (const match of itemMatches) {
+  for (const match of xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)) {
     const block = match[1];
-    const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? '';
-    const link = block.match(/<link>(.*?)<\/link>/)?.[1] ?? '';
-    const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? '';
-    items.push({ title: title.trim(), link: link.trim(), pubDate: pubDate.trim() });
+    items.push({
+      title: field(block, 'title'),
+      link: field(block, 'link'),
+      pubDate: field(block, 'pubDate'),
+      description: field(block, 'description'),
+    });
   }
   return items;
+}
+
+function publicationDate(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
 export const fetchAndStoreReleases = action({
   args: {},
   handler: async (ctx) => {
-    let fetched = 0;
-    let items: RSSItem[] = [];
-
+    const fetchedAt = new Date().toISOString();
+    let xml: string;
     try {
       const res = await fetch(PIB_RSS, { headers: { Accept: 'application/rss+xml, application/xml, text/xml' } });
-      if (res.ok) {
-        const xml = await res.text();
-        items = parseRSSItems(xml);
-      }
+      if (!res.ok) return { fetched: 0, skipped: 0, fetchedAt: null, message: `PIB RSS unavailable (${res.status})` };
+      xml = await res.text();
     } catch (e) {
       console.error('PIB RSS error:', e);
-      return { fetched: 0, message: 'PIB RSS unavailable' };
+      return { fetched: 0, skipped: 0, fetchedAt: null, message: 'PIB RSS unavailable' };
     }
 
-    // Group into sessions by month
-    const byMonth: Record<string, { text: string; ref?: string; kind?: 'pr' | 'issue' }[]> = {};
+    let items: RSSItem[];
+    try {
+      items = parseRSSItems(xml).slice(0, 30);
+    } catch (e) {
+      console.error('PIB RSS parse error:', e);
+      return { fetched: 0, skipped: 0, fetchedAt: null, message: 'PIB RSS could not be parsed' };
+    }
 
-    for (const item of items.slice(0, 30)) {
-      if (!item.title) continue;
-      const date = item.pubDate ? new Date(item.pubDate) : new Date();
-      const sessionKey = date.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
-      if (!byMonth[sessionKey]) byMonth[sessionKey] = [];
+    const accepted = items.filter((item) => Boolean(item.title && item.link?.startsWith('https://')));
+    const skipped = items.length - accepted.length;
+    const byMonth: Record<string, { text: string }[]> = {};
 
-      byMonth[sessionKey].push({
-        text: item.title,
-        ref: item.link ?? undefined,
+    for (const item of accepted) {
+      const title = item.title!;
+      const url = item.link!;
+      await ctx.runMutation(api.ingestion.upserts.upsertArticle, {
+        url,
+        title,
+        outlet: 'Press Information Bureau',
+        sourceKind: 'official',
+        publishedAt: publicationDate(item.pubDate),
+        fetchedAt,
+        excerpt: item.description || undefined,
       });
-      fetched++;
+
+      const date = item.pubDate ? new Date(item.pubDate) : new Date(fetchedAt);
+      const sessionKey = Number.isNaN(date.getTime())
+        ? new Date(fetchedAt).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+        : date.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+      if (!byMonth[sessionKey]) byMonth[sessionKey] = [];
+      byMonth[sessionKey].push({ text: title });
     }
 
-    // Upsert as changelog entries
-    for (const [session, items] of Object.entries(byMonth)) {
-      const sections: Record<string, { text: string; ref?: string; kind?: 'pr' | 'issue'; refLabel?: string }[]> = {};
-      for (const item of items) {
+    for (const [session, monthItems] of Object.entries(byMonth)) {
+      const sections: Record<string, { text: string }[]> = {};
+      for (const item of monthItems) {
         const cat = categoryFromTitle(item.text);
         if (!sections[cat]) sections[cat] = [];
-        sections[cat].push({ text: item.text, ref: item.ref });
+        sections[cat].push(item);
       }
       await ctx.runMutation(api.ingestion.upserts.upsertChangelog, {
         session,
@@ -82,6 +126,11 @@ export const fetchAndStoreReleases = action({
       });
     }
 
-    return { fetched, message: `Fetched ${fetched} PIB releases` };
+    return {
+      fetched: accepted.length,
+      skipped,
+      fetchedAt,
+      message: `Fetched ${accepted.length} PIB releases; skipped ${skipped}`,
+    };
   },
 });

@@ -182,6 +182,21 @@ export default defineSchema({
     author: v.string(),
   }).index('by_state_slug', ['stateId', 'slug']),
 
+  articles: defineTable({
+    id: v.string(),
+    url: v.string(),
+    title: v.string(),
+    outlet: v.string(),
+    sourceKind: v.union(v.literal('official'), v.literal('primary'), v.literal('reported')),
+    publishedAt: v.optional(v.string()),
+    fetchedAt: v.string(),
+    excerpt: v.optional(v.string()),
+    stateId: v.optional(v.string()),
+    relationKey: v.optional(v.string()),
+  }).index('by_url', ['url'])
+    .index('by_relation', ['relationKey'])
+    .index('by_published', ['publishedAt']),
+
   stats: defineTable({
     key: v.string(),
     value: v.number(),

@@ -6,7 +6,7 @@ export const seedAll = mutation({
   args: {},
   handler: async (ctx) => {
     // Clear existing data
-    for (const table of ['states', 'pullRequests', 'issues', 'releases', 'contributors', 'changelog', 'discussions', 'wiki', 'stats'] as const) {
+    for (const table of ['states', 'pullRequests', 'issues', 'releases', 'contributors', 'changelog', 'discussions', 'wiki', 'articles', 'stats'] as const) {
       const rows = await ctx.db.query(table).collect();
       await Promise.all(rows.map((r) => ctx.db.delete(r._id)));
     }
@@ -184,6 +184,31 @@ export const seedAll = mutation({
       },
     ];
     await Promise.all(prs.map((p) => ctx.db.insert('pullRequests', p)));
+    const seededAt = new Date().toISOString();
+    const outletFor = (url: string) => {
+      const host = new URL(url).hostname;
+      if (host.includes('loksabha') || host.includes('sansad')) return 'Lok Sabha';
+      if (host.includes('prsindia')) return 'PRS India';
+      if (host.includes('egazette')) return 'eGazette';
+      if (host.includes('incometaxindia')) return 'Income Tax Department';
+      return host;
+    };
+    const primaryArticles = prs.flatMap((pr) =>
+      [pr.sourceUrl, pr.gazetteUrl]
+        .filter((url): url is string => Boolean(url && url.startsWith('https://')))
+        .map((url) => ({
+          id: `source:${pr.id}:${url}`,
+          url,
+          title: pr.title,
+          outlet: outletFor(url),
+          sourceKind: 'primary' as const,
+          fetchedAt: seededAt,
+          stateId: pr.state,
+          relationKey: `pr:${pr.id}`,
+        }))
+    );
+    await Promise.all(primaryArticles.map((article) => ctx.db.insert('articles', article)));
+
 
     // ── ISSUES ──────────────────────────────────────────────────────────────
     const issues = [

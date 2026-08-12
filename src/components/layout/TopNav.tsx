@@ -17,7 +17,14 @@ export function TopNav({ onLogo, onPRClick, onIssueClick }: TopNavProps) {
 
   const { data: stats } = useNationalStats();
   const { data: results } = useSearch(query);
-
+  const newestFetchedAt = stats?.newestArticleFetchedAt ?? null;
+  const freshnessDate = newestFetchedAt ? new Date(newestFetchedAt) : null;
+  const isStale = Boolean(freshnessDate && Date.now() - freshnessDate.getTime() > 48 * 60 * 60 * 1000);
+  const freshness = !freshnessDate
+    ? 'No source sync yet'
+    : isStale
+      ? `Stale · ${freshnessDate.toLocaleDateString('en-IN')}`
+      : freshnessDate.toLocaleDateString('en-IN');
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setShowResults(false);
@@ -109,15 +116,14 @@ export function TopNav({ onLogo, onPRClick, onIssueClick }: TopNavProps) {
           </div>
         )}
       </div>
-
       <div className="hidden md:flex items-center gap-[18px] font-mono text-[11px] text-gh-muted flex-shrink-0">
         <span className="inline-flex items-center gap-1.5">
           <span
             className="w-[7px] h-[7px] rounded-full"
-            style={{ background: C.green, boxShadow: `0 0 6px ${C.green}` }}
+            style={{ background: isStale ? C.yellow : newestFetchedAt ? C.green : C.muted }}
           />
           <span>
-            Parliament: <span style={{ color: C.green }}>In Session</span>
+            Data feed: <span style={{ color: isStale ? C.yellow : newestFetchedAt ? C.green : C.muted }}>{freshness}</span>
           </span>
         </span>
         <span className="text-gh-border">│</span>

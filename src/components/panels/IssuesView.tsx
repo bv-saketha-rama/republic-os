@@ -115,6 +115,17 @@ export function IssuesView({ stateId, onIssueClick, onUserClick }: IssuesViewPro
                 <span> · {i.sessionsOpen} sessions without resolution</span>
                 {i.stale && <span className="text-gh-yellow"> · stale</span>}
                 <span> · {i.comments} comments</span>
+                {i.sourceUrl && (
+                  <a
+                    href={i.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-2 text-gh-accent hover:underline"
+                  >
+                    source ↗
+                  </a>
+                )}
               </div>
               <div className="font-mono text-[10px] text-gh-muted mt-0.5">
                 Last activity: {i.lastActivity}{' '}

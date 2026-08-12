@@ -74,9 +74,16 @@ export function ReleasesView({ stateId }: ReleasesViewProps) {
                 {r.notes}
               </div>
             )}
-            <div className="mt-2.5 font-mono text-[11px] text-gh-accent cursor-pointer">
-              See full release notes ↗
-            </div>
+            {r.gazetteUrl || r.pdfUrl ? (
+              <a
+                href={r.gazetteUrl ?? r.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2.5 inline-block font-mono text-[11px] text-gh-accent hover:underline"
+              >
+                Open source ↗
+              </a>
+            ) : null}
           </div>
         </div>
       ))}

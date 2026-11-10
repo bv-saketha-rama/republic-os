@@ -1,10 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Avatar } from '@/components/ui/Avatar';
 import { useNationalStats, useSearch } from '@/hooks/useConvex';
 import { C } from '@/lib/constants';
 
 interface TopNavProps {
-  onSearch?: (query: string) => void;
   onLogo?: () => void;
   onPRClick?: (id: string) => void;
   onIssueClick?: (id: number) => void;
@@ -14,6 +12,7 @@ export function TopNav({ onLogo, onPRClick, onIssueClick }: TopNavProps) {
   const [query, setQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: stats } = useNationalStats();
   const { data: results } = useSearch(query);
@@ -29,18 +28,35 @@ export function TopNav({ onLogo, onPRClick, onIssueClick }: TopNavProps) {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setShowResults(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      } else if (e.key === 'Escape' && t === inputRef.current) {
+        setShowResults(false);
+        inputRef.current?.blur();
+      }
+    };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', onKey);
+    };
   }, []);
 
   return (
     <div
-      className="h-14 flex items-center px-5 gap-4 sticky top-0 z-50"
+      className="h-14 flex items-center px-3 md:px-5 gap-3 md:gap-4 sticky top-0 z-50"
       style={{ background: C.surface, borderBottom: `1px solid ${C.border}` }}
     >
-      <div
+      <button
+        type="button"
         onClick={onLogo}
-        className="font-mono text-[15px] font-bold text-gh-text cursor-pointer flex items-center gap-2"
+        aria-label="RepublicOS home"
+        className="bg-transparent border-none p-0 font-mono text-[15px] font-bold text-gh-text cursor-pointer flex items-center gap-2"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
           <rect x="2" y="2" width="20" height="20" rx="3" fill="#f78166" />
@@ -52,19 +68,20 @@ export function TopNav({ onLogo, onPRClick, onIssueClick }: TopNavProps) {
             strokeLinecap="round"
           />
         </svg>
-        RepublicOS
-      </div>
+        <span className="hidden sm:inline">RepublicOS</span>
+      </button>
 
       <div className="flex-1 min-w-0 max-w-[720px] relative" ref={ref}>
         <input
+          ref={inputRef}
           value={query}
           onChange={(e) => { setQuery(e.target.value); setShowResults(true); }}
           onFocus={() => setShowResults(true)}
-          placeholder="Search issues, bills, contributors, acts..."
+          placeholder="Search bills and issues..."
           className="w-full h-8 bg-gh-bg border border-gh-border rounded-md pl-8 pr-10 text-gh-text font-mono text-xs outline-none focus:border-gh-accent"
         />
         <span className="absolute left-2.5 top-2 text-gh-muted font-mono">⌕</span>
-        <span className="absolute right-2.5 top-1.5 font-mono text-[10px] text-gh-muted px-1.5 py-0.5 border border-gh-border rounded">
+        <span className="hidden sm:block absolute right-2.5 top-1.5 font-mono text-[10px] text-gh-muted px-1.5 py-0.5 border border-gh-border rounded">
           /
         </span>
 
@@ -135,7 +152,6 @@ export function TopNav({ onLogo, onPRClick, onIssueClick }: TopNavProps) {
           Last merged: <span className="text-gh-text">{stats?.lastMergedAge ?? '—'}</span>
         </span>
       </div>
-      <Avatar handle="rashtrapati-bhavan" size={26} />
     </div>
   );
 }

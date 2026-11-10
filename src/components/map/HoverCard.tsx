@@ -12,13 +12,15 @@ export function HoverCard({ hovered, data }: HoverCardProps) {
   if (!s) return null;
 
   const cardW = 300;
-  const left = Math.min(hovered.x + 16, window.innerWidth - cardW - 12);
+  const cardH = 190;
+  const left = Math.max(8, Math.min(hovered.x + 16, window.innerWidth - cardW - 12));
+  const top = Math.max(8, Math.min(hovered.y + 12, window.innerHeight - cardH - 12));
   const healthColor = s.health === 'healthy' ? C.green : s.health === 'amber' ? C.yellow : C.red;
 
   return (
     <div
       className="fixed bg-gh-surface border border-gh-border rounded-lg p-3 pointer-events-none z-[100] shadow-xl"
-      style={{ left, top: hovered.y + 12, minWidth: cardW }}
+      style={{ left, top, width: Math.min(cardW, window.innerWidth - 16) }}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="font-sans text-sm font-semibold text-gh-text">{s.name}</div>

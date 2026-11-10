@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Hash } from '@/components/ui/Hash';
-import { useChangelog, usePRYears } from '@/hooks/useConvex';
+import { useChangelog } from '@/hooks/useConvex';
 import { YearMonthFilter } from '@/components/ui/YearMonthFilter';
 import { C } from '@/lib/constants';
 
@@ -25,11 +25,12 @@ export function ChangelogView({ stateId, onIssueClick, onPRClick }: ChangelogVie
     Security: C.accent,
   };
 
-  const { data: years } = usePRYears(stateId);
+  const { data: allEntries } = useChangelog(stateId);
+  const years = [...new Set(allEntries.map((e) => e.year).filter((y): y is number => typeof y === 'number'))].sort((a, b) => b - a);
   const { data: changelog } = useChangelog(stateId, year, month);
 
   return (
-    <div className="px-6 py-5">
+    <div className="px-4 md:px-6 py-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="font-sans text-sm text-gh-muted">Category:</div>

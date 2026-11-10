@@ -3,26 +3,32 @@ import { query } from './_generated/server';
 export const getNationalStats = query({
   args: {},
   handler: async (ctx) => {
-    const [openPRs, mergedPRs, openIssues, articles] = await Promise.all([
-      ctx.db.query('pullRequests').filter((q) =>
-        q.or(q.eq(q.field('status'), 'open'), q.eq(q.field('status'), 'in-review'), q.eq(q.field('status'), 'draft'))
-      ).collect(),
-      ctx.db.query('pullRequests').filter((q) =>
-        q.eq(q.field('status'), 'merged')
-      ).order('desc').take(1),
-      ctx.db.query('issues').filter((q) => q.eq(q.field('status'), 'open')).collect(),
-      ctx.db.query('articles').collect(),
+    const countStatus = async (table: 'pullRequests' | 'issues', status: string) =>
+      (await ctx.db.query(table).withIndex('by_status', (q) => q.eq('status', status)).collect()).length;
+
+    const [open, inReview, draft, openIssues, merged, recentArticles] = await Promise.all([
+      countStatus('pullRequests', 'open'),
+      countStatus('pullRequests', 'in-review'),
+      countStatus('pullRequests', 'draft'),
+      countStatus('issues', 'open'),
+      ctx.db.query('pullRequests').withIndex('by_status', (q) => q.eq('status', 'merged')).collect(),
+      ctx.db.query('articles').order('desc').take(50),
     ]);
 
-    const lastMerged = mergedPRs[0];
-    const newestArticle = articles.sort((a, b) => b.fetchedAt.localeCompare(a.fetchedAt))[0];
+    // "Last merged" = most recently introduced merged bill by year/month, not insertion order.
+    const lastMerged = [...merged].sort(
+      (a, b) => (b.year ?? 0) - (a.year ?? 0) || (b.month ?? 0) - (a.month ?? 0) || b._creationTime - a._creationTime
+    )[0];
+    const newestFetchedAt = recentArticles.reduce<string | null>(
+      (best, art) => (best === null || art.fetchedAt > best ? art.fetchedAt : best),
+      null
+    );
     return {
-      openBills: openPRs.length,
-      openIssues: openIssues.length,
+      openBills: open + inReview + draft,
+      openIssues,
       lastMergedTitle: lastMerged?.title ?? null,
       lastMergedAge: lastMerged?.age ?? null,
-      articleCount: articles.length,
-      newestArticleFetchedAt: newestArticle?.fetchedAt ?? null,
+      newestArticleFetchedAt: newestFetchedAt,
     };
   },
 });

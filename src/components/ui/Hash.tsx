@@ -4,9 +4,15 @@ interface HashProps {
 }
 
 export function Hash({ children, onClick }: HashProps) {
+  const cls = 'font-mono text-xs text-gh-accent';
+  if (!onClick) return <span className={cls}>{children}</span>;
   return (
-    <a onClick={onClick} className="font-mono text-xs text-gh-accent cursor-pointer no-underline">
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className={`${cls} bg-transparent border-none p-0 cursor-pointer`}
+    >
       {children}
-    </a>
+    </button>
   );
 }

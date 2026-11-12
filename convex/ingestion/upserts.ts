@@ -2,6 +2,19 @@
 import { mutation } from '../_generated/server';
 import { v } from 'convex/values';
 
+// Parse a date-ish string ("2025-08-11", "11/08/2025", "November 2026") into year + month (1-12).
+function yearMonth(input?: string): { year?: number; month?: number } {
+  if (!input) return {};
+  let d = new Date(input);
+  if (Number.isNaN(d.getTime())) {
+    const m = input.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/); // DD/MM/YYYY
+    if (m) d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    else d = new Date(`1 ${input}`); // "November 2026"
+  }
+  if (Number.isNaN(d.getTime())) return {};
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
 export const upsertPR = mutation({
   args: {
     id: v.string(),
@@ -22,15 +35,25 @@ export const upsertPR = mutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db.query('pullRequests').withIndex('by_custom_id', (q) => q.eq('id', args.id)).first();
+    const ym = yearMonth(args.introducedDate);
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      // Update every mutable field; never overwrite with undefined.
+      const patch: Record<string, unknown> = {
+        title: args.title,
         status: args.status,
         stage: args.stage,
         conversations: args.conversations,
         labels: args.labels,
-      });
+        author: args.author,
+        age: args.age,
+      };
+      for (const k of ['gazette', 'state', 'ministry', 'introducedDate', 'loksabhaId', 'sourceUrl', 'summary'] as const) {
+        if (args[k] !== undefined) patch[k] = args[k];
+      }
+      if (ym.year !== undefined) { patch.year = ym.year; patch.month = ym.month; }
+      await ctx.db.patch(existing._id, patch);
     } else {
-      await ctx.db.insert('pullRequests', args);
+      await ctx.db.insert('pullRequests', { ...args, ...ym });
     }
   },
 });
@@ -52,12 +75,19 @@ export const upsertContributor = mutation({
       await ctx.db.insert('contributors', {
         ...args,
         orgs: [],
-        affidavit: 'Affidavit data loading…',
+        affidavit: 'Affidavit data not yet available',
         stats: { opened: 0, merged: 0, closed: 0, mergeRate: 0, issuesRaised: 0, reviewsGiven: 0 },
         bio: `${args.role} · ${args.party} · ${args.house}`,
       });
     } else {
-      await ctx.db.patch(existing._id, { role: args.role, party: args.party });
+      await ctx.db.patch(existing._id, {
+        name: args.name,
+        role: args.role,
+        party: args.party,
+        house: args.house,
+        constituency: args.constituency ?? existing.constituency,
+        state: args.state ?? existing.state,
+      });
     }
   },
 });
@@ -89,9 +119,9 @@ export const upsertChangelog = mutation({
           if (!existingTexts.has(item.text)) merged[cat].push(item);
         }
       }
-      await ctx.db.patch(existing._id, { sections: merged });
+      await ctx.db.patch(existing._id, { sections: merged, ...yearMonth(args.session) });
     } else {
-      await ctx.db.insert('changelog', args);
+      await ctx.db.insert('changelog', { ...args, ...yearMonth(args.session) });
     }
   },
 });

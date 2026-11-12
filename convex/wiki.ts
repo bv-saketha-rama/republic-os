@@ -4,7 +4,7 @@ import { v } from 'convex/values';
 export const getWikiPages = query({
   args: { stateId: v.optional(v.string()) },
   handler: async (ctx, { stateId }) => {
-    return await ctx.db.query('wiki').filter((q) => q.eq(q.field('stateId'), stateId)).collect();
+    return await ctx.db.query('wiki').withIndex('by_state_slug', (q) => q.eq('stateId', stateId)).collect();
   },
 });
 

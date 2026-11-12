@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Tag } from '@/components/ui/Tag';
 import { SourceCard } from '@/components/ui/SourceCard';
-import { useArticlesByRelation, usePRById } from '@/hooks/useConvex';
+import { useArticlesByRelation, usePRById, useStateById } from '@/hooks/useConvex';
 import { C } from '@/lib/constants';
 
 interface PRDetailProps {
@@ -15,9 +15,11 @@ export function PRDetail({ prId, onBack, onUserClick }: PRDetailProps) {
   const [tab, setTab] = useState<'timeline' | 'sources'>('timeline');
   const { data: pr, isLoading } = usePRById(prId);
   const { data: articles } = useArticlesByRelation(`pr:${prId}`);
+  const { data: prState } = useStateById(pr?.state ?? null);
   if (isLoading) return <div className="p-8 font-mono text-gh-muted text-sm">Loading bill…</div>;
   if (!pr) return null;
 
+  const house = pr.state ? `${prState?.name ?? pr.state.toUpperCase()} Assembly` : pr.id.startsWith('RS-') ? 'Rajya Sabha' : 'Lok Sabha';
   const isMerged = pr.status === 'merged';
   const isLapsed = pr.status === 'lapsed' || pr.status === 'closed';
   const isOrdinance = pr.status === 'ordinance';
@@ -29,9 +31,9 @@ export function PRDetail({ prId, onBack, onUserClick }: PRDetailProps) {
   const hasGazette = isMerged || stageStr.includes('gazette') || !!pr.gazette || !!pr.gazetteUrl;
   const stages = [
     { key: 'draft', label: 'Draft', date: pr.introducedDate ?? '—', sub: `${pr.ministry ?? 'Ministry'} · drafted by @${pr.author}`, state: pr.introducedDate ? 'done' : 'pending' },
-    { key: 'introduced', label: 'Introduced', date: pr.introducedDate ?? '—', sub: `First reading · ${pr.state ? `${pr.state.toUpperCase()} Assembly` : 'Lok Sabha'}`, state: pr.introducedDate ? 'done' : 'pending' },
+    { key: 'introduced', label: 'Introduced', date: pr.introducedDate ?? '—', sub: `First reading · ${house}`, state: pr.introducedDate ? 'done' : 'pending' },
     { key: 'committee', label: 'Committee referral', date: hasCommittee ? 'referred' : '—', sub: pr.committeeReport ?? (hasCommittee ? 'Referred to standing committee' : 'No committee referral'), state: hasCommittee ? (pr.status === 'changes-requested' ? 'changes' : 'done') : 'locked' },
-    { key: 'vote-ls', label: `Vote: ${pr.state ? `${pr.state.toUpperCase()} Assembly` : 'Lok Sabha'}`, date: passedLS && pr.introducedDate ? 'voted' : '—', sub: pr.voteAyeLS ? `${isMerged || passedLS ? 'Passed' : 'Pending'} ${pr.voteAyeLS}–${pr.voteNoLS ?? '?'} · ${pr.voteAbstainLS ?? 0} abstained` : passedLS ? 'Passed by voice vote' : 'Vote pending', state: passedLS ? 'approved' : isLapsed ? 'locked' : 'pending' },
+    { key: 'vote-ls', label: `Vote: ${house}`, date: passedLS && pr.introducedDate ? 'voted' : '—', sub: pr.voteAyeLS ? `${isMerged || passedLS ? 'Passed' : 'Pending'} ${pr.voteAyeLS}–${pr.voteNoLS ?? '?'} · ${pr.voteAbstainLS ?? 0} abstained` : passedLS ? 'Passed by voice vote' : 'Vote pending', state: passedLS ? 'approved' : isLapsed ? 'locked' : 'pending' },
     { key: 'vote-rs', label: 'Vote: Rajya Sabha', date: passedRS ? 'voted' : '—', sub: pr.voteAyeRS ? `${passedRS ? 'Passed' : 'Pending'} ${pr.voteAyeRS}–${pr.voteNoRS ?? '?'}` : passedRS ? 'Passed' : pr.state ? 'Not applicable for state bill' : 'Vote pending', state: pr.state ? 'locked' : passedRS ? 'approved' : isLapsed ? 'locked' : 'pending' },
     { key: 'assent', label: isOrdinance ? 'Presidential promulgation' : 'Presidential assent', date: pr.assentDate ?? '—', sub: hasAssent ? `Assented on ${pr.assentDate ?? 'record'}` : 'Awaiting both chambers', state: hasAssent ? 'done' : 'locked' },
     { key: 'gazette', label: 'Gazette notification', date: pr.gazette ?? '—', sub: pr.gazetteUrl ? 'Published source available' : pr.gazette ? `Reference: ${pr.gazette}` : 'Pending gazette', state: hasGazette ? 'done' : 'locked' },
@@ -51,8 +53,8 @@ export function PRDetail({ prId, onBack, onUserClick }: PRDetailProps) {
           <div className="font-sans text-[22px] font-semibold text-gh-text">{pr.title} <span className="text-gh-muted font-normal">#{pr.id}</span></div>
         </div>
         <div className="font-mono text-[11px] text-gh-muted mt-2">
-          <span className="text-gh-accent cursor-pointer" onClick={() => onUserClick(pr.author)}>@{pr.author}</span>{' '}opened this bill · {pr.stage}
-          {pr.conversations >= 0 && <span> · {pr.conversations} conversations</span>}
+          <button type="button" className="text-gh-accent cursor-pointer bg-transparent border-none p-0 font-mono text-[11px]" onClick={() => onUserClick(pr.author)}>@{pr.author}</button>{' '}opened this bill · {pr.stage}
+          {pr.conversations > 0 && <span> · {pr.conversations} conversations</span>}
         </div>
         <div className="flex gap-0 mt-4 font-mono text-xs">
           {[
@@ -67,7 +69,7 @@ export function PRDetail({ prId, onBack, onUserClick }: PRDetailProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_240px] gap-6 px-6 py-5">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-6 px-4 md:px-6 py-5">
         <div>
           {tab === 'timeline' && (
             <div>

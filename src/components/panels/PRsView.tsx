@@ -85,8 +85,11 @@ export function PRsView({ stateId, onPRClick, onUserClick }: PRsViewProps) {
         {filtered.map((pr) => (
           <div
             key={pr.id}
+            role="button"
+            tabIndex={0}
             onClick={() => onPRClick(pr.id)}
-            className="px-6 py-3 pl-5 border-b border-gh-border2 cursor-pointer flex items-start gap-3 hover:bg-gh-surface transition-colors"
+            onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onPRClick(pr.id); } }}
+            className="px-4 md:px-6 py-3 pl-5 border-b border-gh-border2 cursor-pointer flex items-start gap-3 hover:bg-gh-surface transition-colors"
             style={{ borderLeft: `4px solid ${borderColor(pr.status)}` }}
           >
             <span
@@ -110,15 +113,16 @@ export function PRsView({ stateId, onPRClick, onUserClick }: PRsViewProps) {
               </div>
               <div className="font-mono text-[11px] text-gh-muted mt-1">
                 Opened by{' '}
-                <span
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onUserClick(pr.author);
                   }}
-                  className="text-gh-accent cursor-pointer"
+                  className="bg-transparent border-none p-0 font-mono text-[11px] text-gh-accent cursor-pointer"
                 >
                   @{pr.author}
-                </span>
+                </button>
                 <span> · {pr.age}</span>
                 <span> · {pr.stage}</span>
                 <span> · {pr.conversations} conversations</span>

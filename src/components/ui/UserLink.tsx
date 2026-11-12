@@ -5,11 +5,12 @@ interface UserLinkProps {
 
 export function UserLink({ handle, onClick }: UserLinkProps) {
   return (
-    <a
-      onClick={() => onClick?.(handle)}
-      className="font-mono text-xs text-gh-accent cursor-pointer no-underline"
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick?.(handle); }}
+      className="bg-transparent border-none p-0 font-mono text-xs text-gh-accent cursor-pointer"
     >
       @{handle}
-    </a>
+    </button>
   );
 }

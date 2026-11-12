@@ -17,8 +17,9 @@ export const getArticles = query({
   args: articleArgs,
   handler: async (ctx, { stateId, sourceKind, relationKey }) => {
     let articles = await ctx.db.query('articles').collect();
+    // State views show only that state's articles; the national view shows unscoped (national) ones.
     articles = stateId
-      ? articles.filter((article) => article.stateId === stateId || article.stateId === undefined)
+      ? articles.filter((article) => article.stateId === stateId)
       : articles.filter((article) => article.stateId === undefined);
     if (sourceKind) articles = articles.filter((article) => article.sourceKind === sourceKind);
     if (relationKey) articles = articles.filter((article) => article.relationKey === relationKey);

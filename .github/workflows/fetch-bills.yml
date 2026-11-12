@@ -17,41 +17,38 @@ jobs:
 
       - name: Fetch bills from Lok Sabha API
         run: |
-          curl -sf \
-            -H "Accept: application/json" \
-            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
-            "https://loksabhaapp.sansad.in/ws/bills?HouseType=L&PageNo=1&PageSize=100" \
-            -o data/bills_raw.json || echo '{"BillList":[]}' > data/bills_raw.json
+          fetch() { # url outfile
+            curl -fsSL --retry 3 --retry-delay 5 --max-time 60 \
+              -H "Accept: application/json" \
+              -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
+              "$1" -o "$2"
+          }
+          fetch "https://loksabhaapp.sansad.in/ws/bills?HouseType=L&PageNo=1&PageSize=100" data/bills_raw.json
+          fetch "https://loksabhaapp.sansad.in/ws/bills?HouseType=R&PageNo=1&PageSize=100" data/bills_rs_raw.json
+          fetch "https://loksabhaapp.sansad.in/ws/members?HouseType=L&PageNo=1&PageSize=600" data/members_raw.json
 
-          curl -sf \
-            -H "Accept: application/json" \
-            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
-            "https://loksabhaapp.sansad.in/ws/bills?HouseType=R&PageNo=1&PageSize=100" \
-            -o data/bills_rs_raw.json || echo '{"BillList":[]}' > data/bills_rs_raw.json
-
-      - name: Merge and normalise bills
+      - name: Normalise and validate
         run: |
           node - <<'EOF'
           const fs = require('fs');
-          const ls = JSON.parse(fs.readFileSync('data/bills_raw.json', 'utf8'));
-          const rs = JSON.parse(fs.readFileSync('data/bills_rs_raw.json', 'utf8'));
-          const all = [...(ls.BillList ?? []), ...(rs.BillList ?? [])];
-          const out = {
-            updatedAt: new Date().toISOString(),
-            count: all.length,
-            bills: all,
-          };
-          fs.writeFileSync('data/bills.json', JSON.stringify(out, null, 2));
-          console.log(`Wrote ${all.length} bills to data/bills.json`);
+          const read = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+          const list = (o, keys) => Array.isArray(o) ? o : (keys.map(k => o?.[k]).find(Array.isArray) ?? []);
+          const tag = (arr, House) => arr.map(b => ({ ...b, House }));
+          const ls = tag(list(read('data/bills_raw.json'), ['BillList', 'bills', 'data']), 'L');
+          const rs = tag(list(read('data/bills_rs_raw.json'), ['BillList', 'bills', 'data']), 'R');
+          const members = list(read('data/members_raw.json'), ['Members', 'members', 'data']);
+          const bills = [...ls, ...rs];
+          if (bills.length === 0 || members.length === 0) {
+            console.error(`Empty result (bills=${bills.length}, members=${members.length}); API shape may have changed. Raw head:`);
+            console.error(fs.readFileSync('data/bills_raw.json', 'utf8').slice(0, 500));
+            process.exit(1);
+          }
+          // No timestamp: keep output stable so unchanged data produces no commit.
+          fs.writeFileSync('data/bills.json', JSON.stringify({ count: bills.length, bills }, null, 2));
+          fs.writeFileSync('data/members.json', JSON.stringify({ count: members.length, Members: members }, null, 2));
+          console.log(`Wrote ${bills.length} bills and ${members.length} members`);
           EOF
-
-      - name: Fetch Lok Sabha members
-        run: |
-          curl -sf \
-            -H "Accept: application/json" \
-            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
-            "https://loksabhaapp.sansad.in/ws/members?HouseType=L&PageNo=1&PageSize=600" \
-            -o data/members.json || echo '{"Members":[]}' > data/members.json
+          rm -f data/bills_raw.json data/bills_rs_raw.json data/members_raw.json
 
       - name: Commit updated data
         run: |

@@ -99,7 +99,7 @@ export function App() {
       };
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col bg-gh-bg">
+    <div className="h-[100dvh] overflow-hidden flex flex-col bg-gh-bg">
       <TopNav
         onLogo={() => { setSelected(null); setView({ kind: 'repo' }); }}
         onPRClick={(id) => { setView({ kind: 'pr', id }); if (!selected) setSelected('IN'); }}
@@ -118,7 +118,7 @@ export function App() {
               <div>
                 <div className="font-mono text-[11px] text-gh-muted mb-0.5">$ ls /india/states</div>
                 <div className="font-mono text-[13px] text-gh-text">
-                  <span className="text-gh-accent">30</span> repositories · governance health
+                  <span className="text-gh-accent">{statesData.length}</span> repositories · governance health
                 </div>
               </div>
               <button
@@ -226,7 +226,7 @@ export function App() {
               <ContributorProfile
                 handle={view.handle}
                 onBack={backToRepo}
-                onUserClick={goToUser}
+               
               />
             )}
           </div>

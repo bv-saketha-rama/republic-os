@@ -49,7 +49,9 @@
   }
 
   button:focus-visible,
-  a:focus-visible {
+  a:focus-visible,
+  path:focus-visible,
+  [role='button']:focus-visible {
     outline: 2px solid #f78166;
     outline-offset: 2px;
   }

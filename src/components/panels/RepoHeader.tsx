@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { UserLink } from '@/components/ui/UserLink';
-import { getPartyColor } from '@/api/static';
-import { C } from '@/lib/constants';
+import { C, getPartyColor } from '@/lib/constants';
+import { mandateExpired } from '@/lib/format';
 import type { State } from '@/types';
 
 interface RepoHeaderProps {
@@ -59,7 +59,7 @@ export function RepoHeader({
             Maintained by <UserLink handle={state.maintainer} onClick={onUserClick} />
             <span> · </span>
             <span style={{ color: partyColor }}>{state.party}</span>
-            <span> · Mandate expires {state.mandateExpires}</span>
+            <span> · {mandateExpired(state.mandateExpires) ? 'Mandate ended' : 'Mandate expires'} {state.mandateExpires}</span>
           </div>
         )}
         <div className="flex gap-0 font-mono text-xs overflow-x-auto">

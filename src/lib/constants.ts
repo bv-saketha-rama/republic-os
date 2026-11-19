@@ -45,3 +45,7 @@ export const PARTY_COLORS: Record<string, string> = {
   'SKM': '#ec4899',
   'NCP(SP)': '#06b6d4',
 };
+
+export function getPartyColor(party: string): string {
+  return PARTY_COLORS[party] ?? C.muted;
+}

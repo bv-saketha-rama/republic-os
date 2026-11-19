@@ -1,10 +1,19 @@
 import { mutation } from './_generated/server';
+import { v } from 'convex/values';
 
 // Run once to populate the DB with real/accurate data.
 // Call from Convex dashboard: Functions → seed → seedAll → Run
 export const seedAll = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { force: v.optional(v.boolean()) },
+  handler: async (ctx, { force }) => {
+    // Refuse to wipe live-ingested data (bills/members/articles from the cron jobs) unless forced.
+    if (!force) {
+      const ingestedPR = (await ctx.db.query('pullRequests').collect()).some((p) => p.loksabhaId);
+      const ingestedArticle = await ctx.db.query('articles').withIndex('by_published').first();
+      if (ingestedPR || ingestedArticle) {
+        throw new Error('Database contains ingested data. Re-run with { "force": true } to wipe and reseed.');
+      }
+    }
     // Clear existing data
     for (const table of ['states', 'pullRequests', 'issues', 'releases', 'contributors', 'changelog', 'discussions', 'wiki', 'articles', 'stats'] as const) {
       const rows = await ctx.db.query(table).collect();

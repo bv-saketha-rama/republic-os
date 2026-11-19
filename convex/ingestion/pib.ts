@@ -8,7 +8,7 @@ function categoryFromTitle(title: string): string {
   if (t.includes('launch') || t.includes('introduces') || t.includes('new scheme') || t.includes('inaugurate')) return 'Added';
   if (t.includes('amend') || t.includes('revise') || t.includes('modify') || t.includes('update')) return 'Changed';
   if (t.includes('repeal') || t.includes('withdraw') || t.includes('discontinue') || t.includes('abolish')) return 'Removed';
-  if (t.includes('security') || t.includes('cyber') || t.includes('cag') || t.includes('audit')) return 'Security';
+  if (t.includes('security') || t.includes('cyber') || /\bcag\b/.test(t) || t.includes('audit')) return 'Security';
   if (t.includes('fix') || t.includes('correction') || t.includes('corrigendum') || t.includes('clarif')) return 'Fixed';
   return 'Added';
 }
